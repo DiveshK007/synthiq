@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion'
 
-export default function LoadingSkeleton() {
+export function LoadingSkeleton() {
   return (
     <div className="space-y-4">
       <div className="h-8 bg-ink/50 rounded animate-pulse" />
@@ -9,6 +9,8 @@ export default function LoadingSkeleton() {
     </div>
   )
 }
+
+export default LoadingSkeleton
 
 export function ClusterSkeleton() {
   return (
