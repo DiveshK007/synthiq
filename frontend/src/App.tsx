@@ -26,7 +26,7 @@ function App() {
   
   return (
     <BrowserRouter>
-      <div className="min-h-screen bg-ink dark:bg-ink text-slate-200 dark:text-slate-200">
+      <div className="min-h-screen" style={{ backgroundColor: '#0B1020', color: 'rgb(226 232 240)' }}>
         <Header />
         <Routes>
           <Route path="/" element={<NewJob />} />
@@ -39,9 +39,9 @@ function App() {
           toastOptions={{
             duration: 4000,
             style: {
-              background: 'var(--ink)',
-              color: 'var(--paper)',
-              border: '1px solid var(--muted)',
+              background: '#0B1020',
+              color: '#F8FAFC',
+              border: '1px solid #9CA3AF',
             },
           }}
         />
