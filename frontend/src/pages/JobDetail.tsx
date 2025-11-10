@@ -266,7 +266,7 @@ export default function JobDetail() {
                 </h2>
                 <motion.button
                   onClick={handleCopyTLDR}
-                  className="p-2 hover:bg-ink/50 rounded-lg transition-colors"
+                  className="p-2 hover:bg-ink-50 rounded-lg transition-colors"
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   aria-label="Copy TL;DR"
@@ -325,7 +325,7 @@ export default function JobDetail() {
                   {job.result.faqs.map((faq, idx) => (
                     <div
                       key={idx}
-                      className="p-4 bg-ink/30 dark:bg-ink/30 rounded-xl border border-ink/20"
+                      className="p-4 bg-ink-30 dark:bg-ink-30 rounded-xl border border-ink-30"
                     >
                       <h3 className="font-semibold text-slate-200 dark:text-slate-200 mb-2">
                         {faq.q}
@@ -351,7 +351,7 @@ export default function JobDetail() {
                   </h2>
                   <motion.button
                     onClick={handleCopyMermaid}
-                    className="flex items-center space-x-2 px-3 py-1 bg-ink/50 hover:bg-ink/70 rounded-lg text-sm text-slate-200 transition-colors"
+                    className="flex items-center space-x-2 px-3 py-1 bg-ink-50 hover:bg-ink-70 rounded-lg text-sm text-slate-200 transition-colors"
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                   >
@@ -362,7 +362,7 @@ export default function JobDetail() {
                 
                 <div
                   ref={mermaidContainerRef}
-                  className="bg-ink/50 dark:bg-ink/50 rounded-xl p-4 min-h-[200px] overflow-x-auto"
+                  className="bg-ink-50 dark:bg-ink-50 rounded-xl p-4 min-h-[200px] overflow-x-auto"
                 />
                 
                 <div className="flex flex-wrap gap-3 mt-4">
@@ -371,7 +371,7 @@ export default function JobDetail() {
                       href={job.result.assets.graph_png_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center space-x-2 px-3 py-1 bg-ink/50 hover:bg-ink/70 rounded-lg text-sm text-slate-200 transition-colors"
+                      className="flex items-center space-x-2 px-3 py-1 bg-ink-50 hover:bg-ink-70 rounded-lg text-sm text-slate-200 transition-colors"
                     >
                       <ExternalLink className="w-4 h-4" />
                       <span>Open PNG</span>
@@ -382,7 +382,7 @@ export default function JobDetail() {
                       href={job.result.assets.slides_pdf_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center space-x-2 px-3 py-1 bg-ink/50 hover:bg-ink/70 rounded-lg text-sm text-slate-200 transition-colors"
+                      className="flex items-center space-x-2 px-3 py-1 bg-ink-50 hover:bg-ink-70 rounded-lg text-sm text-slate-200 transition-colors"
                     >
                       <ExternalLink className="w-4 h-4" />
                       <span>Open Slides PDF</span>
@@ -396,7 +396,7 @@ export default function JobDetail() {
         
         {/* Action Bar */}
         <motion.div
-          className="fixed bottom-0 left-0 right-0 bg-ink/90 dark:bg-ink/90 backdrop-blur-md border-t border-ink/20 p-4 lg:sticky lg:bottom-auto lg:mt-6 lg:rounded-xl"
+          className="fixed bottom-0 left-0 right-0 bg-ink-90 dark:bg-ink-90 backdrop-blur-md border-t border-ink-30 p-4 lg:sticky lg:bottom-auto lg:mt-6 lg:rounded-xl"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.6 }}
@@ -404,7 +404,7 @@ export default function JobDetail() {
           <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-center gap-4">
             <motion.button
               onClick={handleExportJSON}
-              className="flex items-center space-x-2 px-4 py-2 bg-ink/50 hover:bg-ink/70 rounded-xl text-slate-200 font-medium transition-colors"
+              className="flex items-center space-x-2 px-4 py-2 bg-ink-50 hover:bg-ink-70 rounded-xl text-slate-200 font-medium transition-colors"
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
             >
@@ -421,7 +421,7 @@ export default function JobDetail() {
             </motion.button>
             <motion.button
               onClick={handleShareLink}
-              className="flex items-center space-x-2 px-4 py-2 bg-ink/50 hover:bg-ink/70 rounded-xl text-slate-200 font-medium transition-colors"
+              className="flex items-center space-x-2 px-4 py-2 bg-ink-50 hover:bg-ink-70 rounded-xl text-slate-200 font-medium transition-colors"
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
             >
@@ -440,7 +440,7 @@ function ClusterCard({ cluster }: { cluster: { label: string; summary: string; c
   
   return (
     <motion.div
-      className="p-4 bg-ink/30 dark:bg-ink/30 rounded-xl border border-ink/20"
+      className="p-4 bg-ink-30 dark:bg-ink-30 rounded-xl border border-ink-30"
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       whileHover={{ scale: 1.02 }}
