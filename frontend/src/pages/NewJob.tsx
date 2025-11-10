@@ -96,21 +96,21 @@ export default function NewJob() {
   const canSubmit = sources.length > 0 && goal.trim().length > 0
   
   return (
-    <div className="pt-24 pb-12">
+    <div className="pt-24 pb-12" style={{ minHeight: 'calc(100vh - 4rem)' }}>
       <motion.div
         className="max-w-7xl mx-auto px-6"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
       >
-        <h1 className="text-3xl font-bold mb-8 text-slate-200 dark:text-slate-200">
+        <h1 className="text-3xl font-bold mb-8" style={{ color: 'rgb(226 232 240)' }}>
           New Research Job
         </h1>
         
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Left Panel: Sources */}
           <div className="card">
-            <h2 className="text-xl font-semibold mb-4 text-slate-200 dark:text-slate-200">
+            <h2 className="text-xl font-semibold mb-4" style={{ color: 'rgb(226 232 240)' }}>
               Sources
             </h2>
             
@@ -123,8 +123,9 @@ export default function NewJob() {
                   className={`px-4 py-2 rounded-xl font-medium transition-all duration-200 ${
                     activeTab === tab
                       ? 'bg-gradient-to-r from-primary to-accent text-white'
-                      : 'bg-[rgba(11,16,32,0.5)] dark:bg-[rgba(11,16,32,0.5)] text-muted hover:text-slate-200'
+                      : 'text-muted hover:text-slate-200'
                   }`}
+                  style={activeTab !== tab ? { backgroundColor: 'rgba(11, 16, 32, 0.5)' } : {}}
                 >
                   {tab.toUpperCase()}
                 </button>
@@ -173,7 +174,8 @@ export default function NewJob() {
                 {sources.map((source, idx) => (
                   <motion.div
                     key={idx}
-                    className="flex items-center justify-between p-3 bg-[rgba(11,16,32,0.3)] dark:bg-[rgba(11,16,32,0.3)] rounded-xl"
+                    className="flex items-center justify-between p-3 rounded-xl"
+                    style={{ backgroundColor: 'rgba(11, 16, 32, 0.3)' }}
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                   >
@@ -181,13 +183,16 @@ export default function NewJob() {
                       <span className="text-xs text-muted uppercase mr-2">
                         {source.type}
                       </span>
-                      <span className="text-sm text-slate-200 dark:text-slate-200 truncate">
+                      <span className="text-sm" style={{ color: 'rgb(226 232 240)' }} style={{ color: 'rgb(226 232 240)' }}>
                         {source.value}
                       </span>
                     </div>
                     <button
                       onClick={() => handleRemoveSource(idx)}
-                      className="p-1 hover:bg-[rgba(11,16,32,0.5)] rounded-lg transition-colors"
+                      className="p-1 rounded-lg transition-colors"
+                      style={{ backgroundColor: 'transparent' }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(11, 16, 32, 0.5)'}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                       aria-label="Remove source"
                     >
                       <X className="w-4 h-4 text-muted" />
@@ -200,7 +205,7 @@ export default function NewJob() {
           
           {/* Right Panel: Goal & Run */}
           <div className="card">
-            <h2 className="text-xl font-semibold mb-4 text-slate-200 dark:text-slate-200">
+            <h2 className="text-xl font-semibold mb-4" style={{ color: 'rgb(226 232 240)' }}>
               Goal & Run
             </h2>
             
@@ -217,8 +222,9 @@ export default function NewJob() {
                     className={`px-3 py-1 rounded-lg text-sm font-medium transition-all duration-200 ${
                       selectedPreset === preset
                         ? 'bg-primary text-white'
-                        : 'bg-[rgba(11,16,32,0.5)] dark:bg-[rgba(11,16,32,0.5)] text-muted hover:text-slate-200'
+                        : 'text-muted hover:text-slate-200'
                     }`}
+                    style={selectedPreset !== preset ? { backgroundColor: 'rgba(11, 16, 32, 0.5)' } : {}}
                   >
                     {preset}
                   </button>
@@ -252,7 +258,7 @@ export default function NewJob() {
                   onChange={(e) => setAutoFAQ(e.target.checked)}
                   className="w-4 h-4 text-primary rounded focus:ring-primary"
                 />
-                <span className="text-sm text-slate-200 dark:text-slate-200">
+                <span className="text-sm" style={{ color: 'rgb(226 232 240)' }}>
                   Auto-FAQ
                 </span>
               </label>
@@ -263,7 +269,7 @@ export default function NewJob() {
                   onChange={(e) => setGenerateSlides(e.target.checked)}
                   className="w-4 h-4 text-primary rounded focus:ring-primary"
                 />
-                <span className="text-sm text-slate-200 dark:text-slate-200">
+                <span className="text-sm" style={{ color: 'rgb(226 232 240)' }}>
                   Generate slides
                 </span>
               </label>
@@ -274,7 +280,7 @@ export default function NewJob() {
                   onChange={(e) => setKnowledgeGraph(e.target.checked)}
                   className="w-4 h-4 text-primary rounded focus:ring-primary"
                 />
-                <span className="text-sm text-slate-200 dark:text-slate-200">
+                <span className="text-sm" style={{ color: 'rgb(226 232 240)' }}>
                   Knowledge graph
                 </span>
               </label>
@@ -296,4 +302,3 @@ export default function NewJob() {
     </div>
   )
 }
-
