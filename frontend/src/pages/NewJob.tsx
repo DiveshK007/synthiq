@@ -123,7 +123,7 @@ export default function NewJob() {
                   className={`px-4 py-2 rounded-xl font-medium transition-all duration-200 ${
                     activeTab === tab
                       ? 'bg-gradient-to-r from-primary to-accent text-white'
-                      : 'bg-ink-50 dark:bg-ink-50 text-muted hover:text-slate-200'
+                      : 'bg-[rgba(11,16,32,0.5)] dark:bg-[rgba(11,16,32,0.5)] text-muted hover:text-slate-200'
                   }`}
                 >
                   {tab.toUpperCase()}
@@ -173,7 +173,7 @@ export default function NewJob() {
                 {sources.map((source, idx) => (
                   <motion.div
                     key={idx}
-                    className="flex items-center justify-between p-3 bg-ink-30 dark:bg-ink-30 rounded-xl"
+                    className="flex items-center justify-between p-3 bg-[rgba(11,16,32,0.3)] dark:bg-[rgba(11,16,32,0.3)] rounded-xl"
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                   >
@@ -187,7 +187,7 @@ export default function NewJob() {
                     </div>
                     <button
                       onClick={() => handleRemoveSource(idx)}
-                      className="p-1 hover:bg-ink-50 rounded-lg transition-colors"
+                      className="p-1 hover:bg-[rgba(11,16,32,0.5)] rounded-lg transition-colors"
                       aria-label="Remove source"
                     >
                       <X className="w-4 h-4 text-muted" />
@@ -217,7 +217,7 @@ export default function NewJob() {
                     className={`px-3 py-1 rounded-lg text-sm font-medium transition-all duration-200 ${
                       selectedPreset === preset
                         ? 'bg-primary text-white'
-                        : 'bg-ink-50 dark:bg-ink-50 text-muted hover:text-slate-200'
+                        : 'bg-[rgba(11,16,32,0.5)] dark:bg-[rgba(11,16,32,0.5)] text-muted hover:text-slate-200'
                     }`}
                   >
                     {preset}

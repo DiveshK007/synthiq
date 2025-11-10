@@ -30,7 +30,7 @@ export default function ProgressSteps({ progress, status }: ProgressStepsProps) 
                 {value}%
               </span>
             </div>
-            <div className="w-full bg-ink-50 dark:bg-ink-50 rounded-full h-2 overflow-hidden">
+            <div className="w-full bg-[rgba(11,16,32,0.5)] dark:bg-[rgba(11,16,32,0.5)] rounded-full h-2 overflow-hidden">
               <motion.div
                 className={`h-2 rounded-full ${
                   isComplete

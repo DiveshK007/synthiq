@@ -92,7 +92,7 @@ export default function JobHistory() {
                     className={`px-4 py-2 rounded-xl font-medium transition-all duration-200 ${
                       filterStatus === status
                         ? 'bg-gradient-to-r from-primary to-accent text-white'
-                        : 'bg-ink-50 dark:bg-ink-50 text-muted hover:text-slate-200'
+                        : 'bg-[rgba(11,16,32,0.5)] dark:bg-[rgba(11,16,32,0.5)] text-muted hover:text-slate-200'
                     }`}
                   >
                     {status.toUpperCase()}

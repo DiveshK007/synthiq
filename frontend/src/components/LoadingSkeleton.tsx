@@ -3,9 +3,9 @@ import { motion } from 'framer-motion'
 export function LoadingSkeleton() {
   return (
     <div className="space-y-4">
-      <div className="h-8 bg-ink-50 rounded animate-pulse" />
-      <div className="h-32 bg-ink-50 rounded animate-pulse" />
-      <div className="h-24 bg-ink-50 rounded animate-pulse" />
+      <div className="h-8 bg-[rgba(11,16,32,0.5)] rounded animate-pulse" />
+      <div className="h-32 bg-[rgba(11,16,32,0.5)] rounded animate-pulse" />
+      <div className="h-24 bg-[rgba(11,16,32,0.5)] rounded animate-pulse" />
     </div>
   )
 }
@@ -18,14 +18,14 @@ export function ClusterSkeleton() {
       {[1, 2, 3].map((i) => (
         <motion.div
           key={i}
-          className="p-4 bg-ink-30 rounded-xl border border-ink-30"
+          className="p-4 bg-[rgba(11,16,32,0.3)] rounded-xl border border-[rgba(11,16,32,0.2)]"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: i * 0.1 }}
         >
-          <div className="h-6 bg-ink-50 rounded mb-3 animate-pulse" />
-          <div className="h-4 bg-ink-50 rounded mb-2 animate-pulse" />
-          <div className="h-4 bg-ink-50 rounded w-3/4 animate-pulse" />
+          <div className="h-6 bg-[rgba(11,16,32,0.5)] rounded mb-3 animate-pulse" />
+          <div className="h-4 bg-[rgba(11,16,32,0.5)] rounded mb-2 animate-pulse" />
+          <div className="h-4 bg-[rgba(11,16,32,0.5)] rounded w-3/4 animate-pulse" />
         </motion.div>
       ))}
     </div>
@@ -37,8 +37,8 @@ export function ProgressSkeleton() {
     <div className="space-y-4">
       {[1, 2, 3].map((i) => (
         <div key={i}>
-          <div className="h-4 bg-ink-50 rounded mb-2 w-1/4 animate-pulse" />
-          <div className="h-2 bg-ink-50 rounded-full animate-pulse" />
+          <div className="h-4 bg-[rgba(11,16,32,0.5)] rounded mb-2 w-1/4 animate-pulse" />
+          <div className="h-2 bg-[rgba(11,16,32,0.5)] rounded-full animate-pulse" />
         </div>
       ))}
     </div>

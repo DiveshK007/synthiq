@@ -7,7 +7,7 @@ export default function Header() {
   const navigate = useNavigate()
   
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-ink-80 dark:bg-ink-80 backdrop-blur-md border-b border-ink-30 dark:border-ink-30 shadow-lg">
+    <header className="fixed top-0 left-0 right-0 z-50 bg-[rgba(11,16,32,0.8)] dark:bg-[rgba(11,16,32,0.8)] backdrop-blur-md border-b border-[rgba(11,16,32,0.2)] dark:border-[rgba(11,16,32,0.2)] shadow-lg">
       <div className="container mx-auto px-6 max-w-7xl">
         <div className="flex items-center justify-between h-16">
           <Link to="/" className="flex items-center space-x-3">
@@ -26,7 +26,7 @@ export default function Header() {
           <div className="flex items-center space-x-4">
             <motion.button
               onClick={() => navigate('/jobs')}
-              className="flex items-center space-x-2 px-4 py-2 bg-ink-50 hover:bg-ink-70 rounded-xl text-slate-200 font-medium transition-all duration-200"
+              className="flex items-center space-x-2 px-4 py-2 bg-[rgba(11,16,32,0.5)] hover:bg-[rgba(11,16,32,0.7)] rounded-xl text-slate-200 font-medium transition-all duration-200"
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               aria-label="View job history"
