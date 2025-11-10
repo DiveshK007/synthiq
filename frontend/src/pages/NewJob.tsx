@@ -183,7 +183,7 @@ export default function NewJob() {
                       <span className="text-xs text-muted uppercase mr-2">
                         {source.type}
                       </span>
-                      <span className="text-sm" style={{ color: 'rgb(226 232 240)' }} style={{ color: 'rgb(226 232 240)' }}>
+                      <span className="text-sm truncate" style={{ color: 'rgb(226 232 240)' }}>
                         {source.value}
                       </span>
                     </div>
