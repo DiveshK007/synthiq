@@ -68,8 +68,21 @@ class FAQ(BaseModel):
 
 # OpenAI client (optional - falls back to placeholder if not configured)
 openai_api_key = os.getenv("OPENAI_API_KEY")
-openai_client = OpenAI(api_key=openai_api_key) if openai_api_key else None
-use_openai = openai_api_key is not None
+openai_client = None
+use_openai = False
+
+def get_openai_client():
+    """Lazy initialization of OpenAI client"""
+    global openai_client, use_openai
+    if openai_client is None and openai_api_key:
+        try:
+            openai_client = OpenAI(api_key=openai_api_key)
+            use_openai = True
+        except Exception as e:
+            log_json("WARN", "Failed to initialize OpenAI client", error=str(e))
+            openai_client = None
+            use_openai = False
+    return openai_client
 
 
 def log_json(level: str, message: str, **kwargs):
@@ -85,7 +98,8 @@ def log_json(level: str, message: str, **kwargs):
 @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10))
 async def summarize_with_openai(text: str, goal: str) -> dict:
     """Summarize text using OpenAI GPT-4"""
-    if not openai_client:
+    client = get_openai_client()
+    if not client:
         raise ValueError("OpenAI API key not configured")
     
     prompt = f"""You are a research assistant. Analyze the following content and provide:
@@ -102,7 +116,7 @@ Format your response as JSON with keys: tldr, clusters (list of {{label, summary
 """
     
     try:
-        response = openai_client.chat.completions.create(
+        response = client.chat.completions.create(
             model=os.getenv("OPENAI_MODEL", "gpt-4-turbo-preview"),
             messages=[
                 {"role": "system", "content": "You are a research assistant that provides structured summaries."},
