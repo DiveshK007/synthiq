@@ -28,12 +28,14 @@ function App() {
     <BrowserRouter>
       <div className="min-h-screen" style={{ backgroundColor: '#0B1020', color: 'rgb(226 232 240)' }}>
         <Header />
-        <Routes>
-          <Route path="/" element={<NewJob />} />
-          <Route path="/jobs" element={<JobHistory />} />
-          <Route path="/job/:id" element={<JobDetail />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <main>
+          <Routes>
+            <Route path="/" element={<NewJob />} />
+            <Route path="/jobs" element={<JobHistory />} />
+            <Route path="/job/:id" element={<JobDetail />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </main>
         <Toaster
           position="top-right"
           toastOptions={{
