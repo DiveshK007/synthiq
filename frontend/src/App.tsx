@@ -4,11 +4,16 @@ import { useEffect } from 'react'
 import Header from './components/Header'
 import NewJob from './pages/NewJob'
 import JobDetail from './pages/JobDetail'
+import JobHistory from './pages/JobHistory'
 import NotFound from './pages/NotFound'
 import { useThemeStore } from './stores/theme'
+import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 
 function App() {
   const { theme } = useThemeStore()
+  
+  // Enable keyboard shortcuts
+  useKeyboardShortcuts()
   
   useEffect(() => {
     // Apply theme on mount
@@ -25,6 +30,7 @@ function App() {
         <Header />
         <Routes>
           <Route path="/" element={<NewJob />} />
+          <Route path="/jobs" element={<JobHistory />} />
           <Route path="/job/:id" element={<JobDetail />} />
           <Route path="*" element={<NotFound />} />
         </Routes>

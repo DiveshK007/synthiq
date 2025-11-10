@@ -8,6 +8,7 @@ import { useJobsStore } from '../stores/jobs'
 import { usePolling } from '../hooks/usePolling'
 import { renderMermaid } from '../lib/mermaid'
 import ProgressSteps from '../components/ProgressSteps'
+import { LoadingSkeleton, ClusterSkeleton, ProgressSkeleton } from '../components/LoadingSkeleton'
 import type { Job } from '../types'
 
 export default function JobDetail() {
@@ -40,11 +41,26 @@ export default function JobDetail() {
     }
   }, [id, job, addJob])
   
-  // Polling
+  // WebSocket for real-time updates (preferred)
+  const useWebSocketEnabled = !!id && job?.status !== 'done' && job?.status !== 'error'
+  useWebSocket({
+    jobId: id || null,
+    enabled: useWebSocketEnabled,
+    onMessage: (data: Job) => {
+      updateJob(data.id, data)
+    },
+    onError: (error) => {
+      console.error('WebSocket error:', error)
+      // Fall back to polling if WebSocket fails
+      setPollingEnabled(true)
+    },
+  })
+  
+  // Polling as fallback (if WebSocket not available or fails)
   usePolling({
     id: id || '',
     intervalMs: pollingInterval,
-    enabled: pollingEnabled && !!id && job?.status !== 'done' && job?.status !== 'error',
+    enabled: !useWebSocketEnabled && pollingEnabled && !!id && job?.status !== 'done' && job?.status !== 'error',
     onData: (data: Job) => {
       updateJob(data.id, data)
       
@@ -78,8 +94,10 @@ export default function JobDetail() {
   if (!job) {
     return (
       <div className="pt-24 pb-12">
-        <div className="max-w-7xl mx-auto px-6 text-center">
-          <p className="text-muted">Loading job...</p>
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="card">
+            <LoadingSkeleton />
+          </div>
         </div>
       </div>
     )
@@ -89,6 +107,18 @@ export default function JobDetail() {
     if (job.result?.assets?.mermaid) {
       navigator.clipboard.writeText(job.result.assets.mermaid)
       toast.success('Mermaid code copied!')
+    }
+  }
+  
+  const handleCopyJobId = () => {
+    navigator.clipboard.writeText(job.id)
+    toast.success('Job ID copied!')
+  }
+  
+  const handleCopyTLDR = () => {
+    if (job.result?.tldr) {
+      navigator.clipboard.writeText(job.result.tldr)
+      toast.success('TL;DR copied!')
     }
   }
   
@@ -138,7 +168,7 @@ export default function JobDetail() {
           animate={{ opacity: 1, y: 0 }}
         >
           <div className="flex items-center justify-between flex-wrap gap-4">
-            <div>
+            <div className="flex-1">
               <div className="flex items-center space-x-3 mb-2">
                 <span
                   className={`px-3 py-1 rounded-lg text-sm font-semibold ${
@@ -159,9 +189,20 @@ export default function JobDetail() {
                   </span>
                 )}
               </div>
-              <p className="text-sm text-muted">
-                Created: {formatTimestamp(job.created_at || job.result?.created_at || Date.now())}
-              </p>
+              <div className="flex items-center space-x-2">
+                <p className="text-sm text-muted">
+                  Created: {formatTimestamp(job.created_at || job.result?.created_at || Date.now())}
+                </p>
+                <span className="text-muted">•</span>
+                <button
+                  onClick={handleCopyJobId}
+                  className="text-xs text-primary hover:underline flex items-center space-x-1"
+                  aria-label="Copy Job ID"
+                >
+                  <span>ID: {job.id.substring(0, 8)}...</span>
+                  <Copy className="w-3 h-3" />
+                </button>
+              </div>
             </div>
           </div>
         </motion.div>
@@ -177,7 +218,11 @@ export default function JobDetail() {
             <h2 className="text-xl font-semibold mb-4 text-slate-200 dark:text-slate-200">
               Progress
             </h2>
-            <ProgressSteps progress={job.progress} status={job.status} />
+            {job.status === 'queued' ? (
+              <ProgressSkeleton />
+            ) : (
+              <ProgressSteps progress={job.progress} status={job.status} />
+            )}
             {job.status === 'queued' && (
               <p className="mt-4 text-sm text-muted">Still running...</p>
             )}
@@ -220,10 +265,7 @@ export default function JobDetail() {
                   TL;DR
                 </h2>
                 <motion.button
-                  onClick={() => {
-                    navigator.clipboard.writeText(job.result!.tldr)
-                    toast.success('Copied!')
-                  }}
+                  onClick={handleCopyTLDR}
                   className="p-2 hover:bg-ink/50 rounded-lg transition-colors"
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
@@ -238,7 +280,7 @@ export default function JobDetail() {
             </motion.div>
             
             {/* Clusters */}
-            {job.result.clusters && job.result.clusters.length > 0 && (
+            {job.result.clusters && job.result.clusters.length > 0 ? (
               <motion.div
                 className="card"
                 initial={{ opacity: 0, y: 20 }}
@@ -253,6 +295,18 @@ export default function JobDetail() {
                     <ClusterCard key={idx} cluster={cluster} />
                   ))}
                 </div>
+              </motion.div>
+            ) : (
+              <motion.div
+                className="card"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+              >
+                <h2 className="text-xl font-semibold mb-4 text-slate-200 dark:text-slate-200">
+                  Clusters
+                </h2>
+                <ClusterSkeleton />
               </motion.div>
             )}
             

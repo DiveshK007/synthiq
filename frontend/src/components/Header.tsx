@@ -1,6 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Brain, Plus } from 'lucide-react'
+import { Brain, Plus, History } from 'lucide-react'
 import ThemeToggle from './ThemeToggle'
 
 export default function Header() {
@@ -24,6 +24,16 @@ export default function Header() {
           </Link>
           
           <div className="flex items-center space-x-4">
+            <motion.button
+              onClick={() => navigate('/jobs')}
+              className="flex items-center space-x-2 px-4 py-2 bg-ink/50 hover:bg-ink/70 rounded-xl text-slate-200 font-medium transition-all duration-200"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              aria-label="View job history"
+            >
+              <History className="w-4 h-4" />
+              <span>History</span>
+            </motion.button>
             <ThemeToggle />
             <motion.button
               onClick={() => navigate('/')}
