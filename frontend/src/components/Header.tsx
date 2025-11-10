@@ -1,50 +1,43 @@
-import { Moon, Sun, Brain } from 'lucide-react'
+import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
+import { Brain, Plus } from 'lucide-react'
+import ThemeToggle from './ThemeToggle'
 
-interface HeaderProps {
-  darkMode: boolean
-  toggleDarkMode: () => void
-}
-
-export default function Header({ darkMode, toggleDarkMode }: HeaderProps) {
+export default function Header() {
+  const navigate = useNavigate()
+  
   return (
-    <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm">
-      <div className="container mx-auto px-4 py-4 max-w-7xl">
-        <div className="flex items-center justify-between">
-          <motion.div
-            className="flex items-center space-x-3"
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.3 }}
-          >
-            <div className="p-2 bg-gradient-to-br from-coral-500 to-indigo-500 rounded-lg">
+    <header className="fixed top-0 left-0 right-0 z-50 bg-ink/80 dark:bg-ink/80 backdrop-blur-md border-b border-ink/20 dark:border-ink/20 shadow-lg">
+      <div className="container mx-auto px-6 max-w-7xl">
+        <div className="flex items-center justify-between h-16">
+          <Link to="/" className="flex items-center space-x-3">
+            <motion.div
+              className="p-2 bg-gradient-to-br from-primary to-accent rounded-xl"
+              whileHover={{ scale: 1.05, rotate: 5 }}
+              whileTap={{ scale: 0.95 }}
+            >
               <Brain className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-coral-500 to-indigo-500 bg-clip-text text-transparent">
-                SynthIQ
-              </h1>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                Multi-Agent Research Summarizer
-              </p>
-            </div>
-          </motion.div>
+            </motion.div>
+            <span className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+              SynthIQ
+            </span>
+          </Link>
           
-          <motion.button
-            onClick={toggleDarkMode}
-            className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors duration-200"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            {darkMode ? (
-              <Sun className="w-5 h-5 text-gray-700 dark:text-gray-300" />
-            ) : (
-              <Moon className="w-5 h-5 text-gray-700 dark:text-gray-300" />
-            )}
-          </motion.button>
+          <div className="flex items-center space-x-4">
+            <ThemeToggle />
+            <motion.button
+              onClick={() => navigate('/')}
+              className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-primary to-accent hover:from-primary-900 hover:to-accent rounded-xl text-white font-medium transition-all duration-200 shadow-md hover:shadow-lg"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              aria-label="Create new job"
+            >
+              <Plus className="w-4 h-4" />
+              <span>New Job</span>
+            </motion.button>
+          </div>
         </div>
       </div>
     </header>
   )
 }
-

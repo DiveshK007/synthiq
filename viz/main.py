@@ -1,7 +1,9 @@
 """
 Viz service - generates Mermaid graphs and visualizations
 """
+import json
 import logging
+import os
 from typing import List
 
 from fastapi import FastAPI, HTTPException
@@ -9,10 +11,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import ORJSONResponse
 from pydantic import BaseModel
 
-# Configure logging
+# Configure JSON logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    format='%(message)s',
+    handlers=[logging.StreamHandler()]
 )
 logger = logging.getLogger(__name__)
 
@@ -24,9 +27,10 @@ app = FastAPI(
 )
 
 # CORS middleware
+frontend_origin = os.getenv("FRONTEND_ORIGIN", "http://localhost:5174")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[frontend_origin],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -55,36 +59,33 @@ class VisualizeRequest(BaseModel):
     tldr: str
 
 
-class VisualizeResponse(BaseModel):
-    mermaid: str
-    graph_png_url: str
-    slides_pdf_url: str
+def log_json(level: str, message: str, **kwargs):
+    """Log as JSON"""
+    log_entry = {
+        "level": level,
+        "message": message,
+        **kwargs
+    }
+    logger.info(json.dumps(log_entry))
 
 
 def generate_mermaid_graph(clusters: List[Cluster], tldr: str) -> str:
     """Generate Mermaid flowchart from clusters"""
     if not clusters:
-        return "graph TD\n    A[No Clusters] --> B[Empty Graph]"
+        return "flowchart LR\n    A[No Clusters] --> B[Empty Graph]"
     
-    lines = ["graph TD"]
-    
-    # Add TL;DR node
-    tldr_short = tldr[:50] + "..." if len(tldr) > 50 else tldr
-    lines.append(f'    TLDR["TL;DR: {tldr_short}"]')
+    lines = ["flowchart LR"]
     
     # Add cluster nodes
     for i, cluster in enumerate(clusters):
-        node_id = f"C{i}"
-        label_short = cluster.label[:30] + "..." if len(cluster.label) > 30 else cluster.label
-        lines.append(f'    {node_id}["{label_short}"]')
-        
-        # Link to TL;DR
-        lines.append(f'    TLDR --> {node_id}')
+        node_id = f"C{i + 1}"
+        label = cluster.label.replace('"', "'")  # Escape quotes
+        lines.append(f'    {node_id}["{label}"]')
     
-    # Link all clusters pairwise (simple completeness)
+    # Link clusters pairwise
     for i in range(len(clusters)):
         for j in range(i + 1, len(clusters)):
-            lines.append(f'    C{i} --> C{j}')
+            lines.append(f'    C{i + 1} --> C{j + 1}')
     
     return "\n".join(lines)
 
@@ -95,7 +96,7 @@ async def healthz():
     return {"ok": True}
 
 
-@app.post("/viz", response_model=VisualizeResponse)
+@app.post("/viz")
 async def visualize(request: VisualizeRequest):
     """Generate Mermaid graph from clusters"""
     try:
@@ -105,19 +106,20 @@ async def visualize(request: VisualizeRequest):
         # Generate Mermaid graph
         mermaid = generate_mermaid_graph(clusters, tldr)
         
-        logger.info(f"Generated Mermaid graph with {len(clusters)} clusters")
+        log_json("INFO", "Visualization generated", cluster_count=len(clusters))
         
-        return VisualizeResponse(
-            mermaid=mermaid,
-            graph_png_url="https://via.placeholder.com/800x400.png?text=Graph",
-            slides_pdf_url="https://example.com/slides.pdf"
-        )
+        return {
+            "mermaid": mermaid,
+            "graph_png_url": "https://via.placeholder.com/800x400.png?text=Graph",
+            "slides_pdf_url": "https://example.com/slides.pdf"
+        }
         
     except Exception as e:
-        logger.error(f"Error generating graph: {e}")
+        log_json("ERROR", "Error generating graph", error=str(e))
         raise HTTPException(status_code=500, detail=f"Error generating graph: {str(e)}")
 
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8083)
+    port = int(os.getenv("PORT", "8083"))
+    uvicorn.run(app, host="0.0.0.0", port=port)

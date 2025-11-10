@@ -1,24 +1,33 @@
 # Summarize Service
 
-Clusters and summarizes text content, generating TL;DR, clusters, and FAQs.
+Clusters and summarizes text content.
 
 ## Setup
 
 ```bash
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
 ## Run
 
 ```bash
-uvicorn main:app --reload --port 8002
+export FRONTEND_ORIGIN=http://localhost:5174
+export PORT=8082  # Optional, defaults to 8082
+
+python -m uvicorn main:app --host 0.0.0.0 --port 8082
+```
+
+Or:
+
+```bash
+python main.py
 ```
 
 ## API
 
-- `POST /summarize` - Summarize and cluster text
+- `GET /healthz` - Health check
+- `POST /summarize` - Summarize and cluster documents
 
-See http://localhost:8002/docs for OpenAPI documentation.
-
+See http://localhost:8082/docs for OpenAPI documentation.

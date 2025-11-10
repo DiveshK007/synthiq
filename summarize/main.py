@@ -1,21 +1,21 @@
 """
 Summarize service - clusters and summarizes text
 """
+import json
 import logging
+import os
 from typing import List
 
-import numpy as np
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import ORJSONResponse
 from pydantic import BaseModel
-from sklearn.cluster import KMeans
-from sklearn.feature_extraction.text import TfidfVectorizer
 
-# Configure logging
+# Configure JSON logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    format='%(message)s',
+    handlers=[logging.StreamHandler()]
 )
 logger = logging.getLogger(__name__)
 
@@ -27,9 +27,10 @@ app = FastAPI(
 )
 
 # CORS middleware
+frontend_origin = os.getenv("FRONTEND_ORIGIN", "http://localhost:5174")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[frontend_origin],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -59,27 +60,18 @@ class Cluster(BaseModel):
 
 
 class FAQ(BaseModel):
-    question: str
-    answer: str
+    q: str
+    a: str
 
 
-class SummarizeResponse(BaseModel):
-    clusters: List[Cluster]
-    tldr: str
-    faqs: List[FAQ]
-
-
-def synthesize_placeholder_texts(doc_ids: List[str], goal: str) -> List[str]:
-    """Synthesize placeholder texts based on doc_ids and goal"""
-    # In a real implementation, this would fetch actual document content
-    # For now, generate placeholder texts
-    texts = []
-    for i, doc_id in enumerate(doc_ids):
-        text = f"Document {i+1} (ID: {doc_id[:8]}...) contains information related to {goal}. "
-        text += f"This document discusses key concepts and findings relevant to the research goal. "
-        text += f"Key points include methodology, results, and implications for the field."
-        texts.append(text)
-    return texts
+def log_json(level: str, message: str, **kwargs):
+    """Log as JSON"""
+    log_entry = {
+        "level": level,
+        "message": message,
+        **kwargs
+    }
+    logger.info(json.dumps(log_entry))
 
 
 @app.get("/healthz")
@@ -88,7 +80,7 @@ async def healthz():
     return {"ok": True}
 
 
-@app.post("/summarize", response_model=SummarizeResponse)
+@app.post("/summarize")
 async def summarize(request: SummarizeRequest):
     """Summarize and cluster documents"""
     try:
@@ -98,58 +90,24 @@ async def summarize(request: SummarizeRequest):
         if not doc_ids:
             raise HTTPException(status_code=400, detail="doc_ids cannot be empty")
         
-        # Synthesize placeholder texts
-        texts = synthesize_placeholder_texts(doc_ids, goal)
-        
-        # Vectorize with TfidfVectorizer
-        vectorizer = TfidfVectorizer(max_features=100, stop_words='english')
-        try:
-            X = vectorizer.fit_transform(texts)
-        except ValueError:
-            # Fallback if vectorization fails
-            X = np.random.rand(len(texts), 10)
-        
-        # KMeans clustering
-        n_clusters = min(3, len(doc_ids))
-        if n_clusters < 1:
-            n_clusters = 1
-        
-        kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init=10)
-        labels = kmeans.fit_predict(X)
-        
-        # Build clusters
+        # Create 3 placeholder clusters
         clusters = []
-        for cluster_id in range(n_clusters):
-            cluster_indices = [i for i, label in enumerate(labels) if label == cluster_id]
-            
-            if not cluster_indices:
-                continue
-            
-            # Build summary from cluster texts
-            cluster_texts = [texts[i] for i in cluster_indices]
-            summary = " ".join(cluster_texts[:2])  # Use first two sentences
-            if len(summary) > 300:
-                summary = summary[:297] + "..."
-            
-            # Build citations
-            citations = []
-            for idx in cluster_indices[:3]:  # Limit to 3 citations per cluster
-                citation = Citation(
-                    doc_id=doc_ids[idx],
-                    spans=[CitationSpan(chunk_id=idx, start=0, end=80)]
-                )
-                citations.append(citation)
-            
+        for i in range(min(3, len(doc_ids))):
             cluster = Cluster(
-                label=f"Cluster {cluster_id + 1}",
-                summary=summary,
-                citations=citations
+                label=f"Cluster {i + 1}",
+                summary=f"This cluster relates to {goal}. It contains key insights and findings relevant to the research goal. The documents in this cluster provide important context and analysis.",
+                citations=[
+                    Citation(
+                        doc_id=doc_ids[i] if i < len(doc_ids) else doc_ids[0],
+                        spans=[CitationSpan(chunk_id=1, start=0, end=80)]
+                    )
+                ]
             )
             clusters.append(cluster)
         
-        # Build TL;DR from first sentences of clusters
-        tldr_parts = []
-        for cluster in clusters[:3]:  # Use first 3 clusters
+        # Build TL;DR from first sentences
+        tldr_parts = [f"Research on {goal} reveals important insights."]
+        for cluster in clusters[:2]:
             first_sentence = cluster.summary.split('.')[0] + '.'
             tldr_parts.append(first_sentence)
         
@@ -160,30 +118,31 @@ async def summarize(request: SummarizeRequest):
         # Build FAQs
         faqs = [
             FAQ(
-                question="What is the main topic?",
-                answer=f"The main topic relates to {goal}. The documents discuss various aspects of this research area."
+                q=f"What is the main focus of research on {goal}?",
+                a=f"The main focus is understanding key aspects of {goal} through comprehensive analysis of the provided documents."
             ),
             FAQ(
-                question="What are the key findings?",
-                answer="The key findings include important insights derived from the analyzed documents, covering methodology, results, and implications."
+                q="What are the key findings?",
+                a="The key findings include important insights derived from the analyzed documents, covering methodology, results, and implications."
             )
         ]
         
-        logger.info(f"Generated {len(clusters)} clusters, {len(faqs)} FAQs")
+        log_json("INFO", "Summarization complete", cluster_count=len(clusters), faq_count=len(faqs))
         
-        return SummarizeResponse(
-            clusters=clusters,
-            tldr=tldr,
-            faqs=faqs
-        )
+        return {
+            "clusters": [c.model_dump() for c in clusters],
+            "tldr": tldr,
+            "faqs": [f.model_dump() for f in faqs]
+        }
         
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error summarizing: {e}")
+        log_json("ERROR", "Error summarizing", error=str(e))
         raise HTTPException(status_code=500, detail=f"Error summarizing: {str(e)}")
 
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8082)
+    port = int(os.getenv("PORT", "8082"))
+    uvicorn.run(app, host="0.0.0.0", port=port)

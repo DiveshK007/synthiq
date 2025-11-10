@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+  orchestrator:
+    build:
+      context: ../orchestrator
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - INGESTOR_URL=http://ingestor:8001
+      - SUMMARIZE_URL=http://summarize:8002
+      - VIZ_URL=http://viz:8003
+    depends_on:
+      - ingestor
+      - summarize
+      - viz
+    networks:
+      - synthiq-network
+
+  ingestor:
+    build:
+      context: ../ingestor
+      dockerfile: Dockerfile
+    ports:
+      - "8001:8001"
+    networks:
+      - synthiq-network
+
+  summarize:
+    build:
+      context: ../summarize
+      dockerfile: Dockerfile
+    ports:
+      - "8002:8002"
+    networks:
+      - synthiq-network
+
+  viz:
+    build:
+      context: ../viz
+      dockerfile: Dockerfile
+    ports:
+      - "8003:8003"
+    networks:
+      - synthiq-network
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://localhost:8000
+    depends_on:
+      - orchestrator
+    networks:
+      - synthiq-network
+
+networks:
+  synthiq-network:
+    driver: bridge
+

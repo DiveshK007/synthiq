@@ -2,6 +2,7 @@
 Orchestrator service - coordinates the pipeline
 """
 import asyncio
+import json
 import logging
 import os
 import time
@@ -14,11 +15,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import ORJSONResponse
 from pydantic import BaseModel
 
-# Configure structured logging
+# Configure JSON logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - [%(job_id)s] - %(message)s',
-    style='%'
+    format='%(message)s',
+    handlers=[logging.StreamHandler()]
 )
 logger = logging.getLogger(__name__)
 
@@ -49,17 +50,68 @@ jobs: Dict[str, dict] = {}
 
 
 class Source(BaseModel):
-    type: str  # "url" | "pdf"
+    type: str  # "url" | "pdf" | "text"
     value: str
 
 
-class JobRequest(BaseModel):
+class NewJobPayload(BaseModel):
     sources: List[Source]
     goal: str
 
 
-class JobResponse(BaseModel):
-    job_id: str
+class JobProgress(BaseModel):
+    ingest: int
+    summarize: int
+    viz: int
+
+
+class CitationSpan(BaseModel):
+    chunk_id: int
+    start: int
+    end: int
+
+
+class Citation(BaseModel):
+    doc_id: str
+    spans: List[CitationSpan]
+
+
+class Cluster(BaseModel):
+    label: str
+    summary: str
+    citations: List[Citation]
+
+
+class FAQ(BaseModel):
+    q: str
+    a: str
+
+
+class JobResult(BaseModel):
+    tldr: str
+    clusters: List[dict]
+    faqs: List[dict]
+    assets: dict
+    created_at: int
+    duration_ms: int
+
+
+class Job(BaseModel):
+    id: str
+    status: str  # "queued" | "running" | "done" | "error"
+    error: Optional[str] = None
+    progress: JobProgress
+    result: Optional[JobResult] = None
+
+
+def log_json(level: str, message: str, **kwargs):
+    """Log as JSON"""
+    log_entry = {
+        "level": level,
+        "message": message,
+        **kwargs
+    }
+    logger.info(json.dumps(log_entry))
 
 
 @app.get("/healthz")
@@ -68,87 +120,87 @@ async def healthz():
     return {"ok": True}
 
 
-@app.post("/jobs", response_model=JobResponse)
-async def create_job(request: JobRequest):
+@app.post("/jobs")
+async def create_job(payload: NewJobPayload):
     """Create a new research job"""
     job_id = str(uuid4())
-    created_at_ms = int(time.time() * 1000)
+    created_at = int(time.time() * 1000)
     
     job = {
-        "job_id": job_id,
+        "id": job_id,
         "status": "queued",
+        "error": None,
         "progress": {
-            "ingestor": 0,
+            "ingest": 0,
             "summarize": 0,
             "viz": 0
         },
         "result": None,
-        "error": None,
-        "created_at": created_at_ms,
-        "duration_ms": None
+        "created_at": created_at
     }
     
     jobs[job_id] = job
     
-    # Start processing asynchronously
-    asyncio.create_task(run_pipeline(job_id, request.sources, request.goal))
+    log_json("INFO", "Job created", job_id=job_id, route="POST /jobs")
     
-    logger.info(f"Created job {job_id}", extra={"job_id": job_id, "route": "POST /jobs"})
-    return JobResponse(job_id=job_id)
+    # Start pipeline asynchronously
+    asyncio.create_task(run_pipeline(job_id, payload))
+    
+    return {"job_id": job_id}
 
 
 @app.get("/jobs/{job_id}")
 async def get_job(job_id: str):
     """Get job status and results"""
     if job_id not in jobs:
-        logger.warning(f"Job not found: {job_id}", extra={"job_id": job_id, "route": "GET /jobs/{job_id}"})
+        log_json("WARN", "Job not found", job_id=job_id, route="GET /jobs/{job_id}")
         raise HTTPException(status_code=404, detail="Job not found")
     
-    logger.info(f"Retrieved job {job_id}", extra={"job_id": job_id, "route": "GET /jobs/{job_id}"})
+    log_json("INFO", "Job retrieved", job_id=job_id, route="GET /jobs/{job_id}")
     return jobs[job_id]
 
 
-async def run_pipeline(job_id: str, sources: List[Source], goal: str):
-    """Run the pipeline: ingestor -> summarize -> viz"""
+async def run_pipeline(job_id: str, payload: NewJobPayload):
+    """Run the pipeline: ingest -> summarize -> viz"""
     job = jobs[job_id]
     start_time = time.time()
     
     try:
         job["status"] = "running"
-        logger.info(f"Starting pipeline for job {job_id}", extra={"job_id": job_id, "route": "run_pipeline"})
+        log_json("INFO", "Pipeline started", job_id=job_id, route="run_pipeline")
         
-        # Step 1: Ingest content
-        logger.info(f"Ingesting content for job {job_id}", extra={"job_id": job_id, "route": "run_pipeline"})
-        job["progress"]["ingestor"] = 10
+        # Step 1: Ingest
+        log_json("INFO", "Ingesting content", job_id=job_id, route="run_pipeline")
+        job["progress"]["ingest"] = 10
         
         async with httpx.AsyncClient(timeout=60.0) as client:
             response = await client.post(
                 f"{INGESTOR_URL}/ingest",
-                json={"sources": [{"type": s.type, "value": s.value} for s in sources]}
+                json={"sources": [{"type": s.type, "value": s.value} for s in payload.sources]}
             )
             response.raise_for_status()
             ingest_data = response.json()
         
-        job["progress"]["ingestor"] = 100
-        logger.info(f"Ingestion complete for job {job_id}", extra={"job_id": job_id, "route": "run_pipeline"})
+        job["progress"]["ingest"] = 100
+        log_json("INFO", "Ingestion complete", job_id=job_id, route="run_pipeline")
         
-        # Step 2: Summarize and cluster
-        logger.info(f"Summarizing content for job {job_id}", extra={"job_id": job_id, "route": "run_pipeline"})
+        # Step 2: Summarize
+        log_json("INFO", "Summarizing content", job_id=job_id, route="run_pipeline")
         job["progress"]["summarize"] = 10
         
         async with httpx.AsyncClient(timeout=60.0) as client:
             response = await client.post(
                 f"{SUMMARIZE_URL}/summarize",
-                json={"doc_ids": ingest_data.get("doc_ids", []), "goal": goal}
+                json={"doc_ids": ingest_data.get("doc_ids", []), "goal": payload.goal}
             )
             response.raise_for_status()
             summarize_data = response.json()
         
         job["progress"]["summarize"] = 100
-        logger.info(f"Summarization complete for job {job_id}", extra={"job_id": job_id, "route": "run_pipeline"})
+        log_json("INFO", "Summarization complete", job_id=job_id, route="run_pipeline")
         
-        # Step 3: Generate visualization
-        logger.info(f"Generating visualization for job {job_id}", extra={"job_id": job_id, "route": "run_pipeline"})
+        # Step 3: Visualize
+        log_json("INFO", "Generating visualization", job_id=job_id, route="run_pipeline")
         job["progress"]["viz"] = 10
         
         async with httpx.AsyncClient(timeout=60.0) as client:
@@ -181,22 +233,22 @@ async def run_pipeline(job_id: str, sources: List[Source], goal: str):
             "created_at": job["created_at"],
             "duration_ms": duration_ms
         }
-        job["duration_ms"] = duration_ms
         
-        logger.info(f"Pipeline complete for job {job_id} in {duration_ms}ms", extra={"job_id": job_id, "route": "run_pipeline"})
+        log_json("INFO", "Pipeline complete", job_id=job_id, duration_ms=duration_ms, route="run_pipeline")
         
     except httpx.HTTPError as e:
         error_msg = f"HTTP error: {str(e)}"
-        logger.error(f"Pipeline error for job {job_id}: {error_msg}", extra={"job_id": job_id, "route": "run_pipeline"})
+        log_json("ERROR", "Pipeline HTTP error", job_id=job_id, error=error_msg, route="run_pipeline")
         job["status"] = "error"
         job["error"] = error_msg
     except Exception as e:
         error_msg = str(e)
-        logger.error(f"Pipeline error for job {job_id}: {error_msg}", extra={"job_id": job_id, "route": "run_pipeline"})
+        log_json("ERROR", "Pipeline error", job_id=job_id, error=error_msg, route="run_pipeline")
         job["status"] = "error"
         job["error"] = error_msg
 
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8080)
+    port = int(os.getenv("PORT", "8080"))
+    uvicorn.run(app, host="0.0.0.0", port=port)

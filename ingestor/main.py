@@ -1,11 +1,12 @@
 """
 Ingestor service - fetches and cleans raw content
 """
+import json
 import logging
 import os
 import re
 from typing import List
-from uuid import uuid4
+from io import BytesIO
 
 import httpx
 from bs4 import BeautifulSoup
@@ -14,12 +15,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import ORJSONResponse
 from pydantic import BaseModel
 from pypdf import PdfReader
-from io import BytesIO
 
-# Configure logging
+# Configure JSON logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    format='%(message)s',
+    handlers=[logging.StreamHandler()]
 )
 logger = logging.getLogger(__name__)
 
@@ -31,9 +32,10 @@ app = FastAPI(
 )
 
 # CORS middleware
+frontend_origin = os.getenv("FRONTEND_ORIGIN", "http://localhost:5174")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[frontend_origin],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -41,7 +43,7 @@ app.add_middleware(
 
 
 class Source(BaseModel):
-    type: str  # "url" | "pdf"
+    type: str  # "url" | "pdf" | "text"
     value: str
 
 
@@ -49,39 +51,14 @@ class IngestRequest(BaseModel):
     sources: List[Source]
 
 
-class IngestResponse(BaseModel):
-    doc_ids: List[str]
-    tokens: int
-
-
-def chunk_text(text: str, chunk_size: int = 2000) -> List[str]:
-    """Split text into roughly chunk_size character chunks"""
-    chunks = []
-    current_chunk = ""
-    
-    # Split by sentences first
-    sentences = re.split(r'[.!?]+\s+', text)
-    
-    for sentence in sentences:
-        sentence = sentence.strip()
-        if not sentence:
-            continue
-        
-        # If adding this sentence would exceed chunk size, save current chunk
-        if len(current_chunk) + len(sentence) + 1 > chunk_size and current_chunk:
-            chunks.append(current_chunk.strip())
-            current_chunk = sentence
-        else:
-            if current_chunk:
-                current_chunk += " " + sentence
-            else:
-                current_chunk = sentence
-    
-    # Add remaining chunk
-    if current_chunk:
-        chunks.append(current_chunk.strip())
-    
-    return chunks
+def log_json(level: str, message: str, **kwargs):
+    """Log as JSON"""
+    log_entry = {
+        "level": level,
+        "message": message,
+        **kwargs
+    }
+    logger.info(json.dumps(log_entry))
 
 
 async def fetch_url(url: str) -> str:
@@ -107,14 +84,14 @@ async def fetch_url(url: str) -> str:
             text = re.sub(r'\s+', ' ', text)
             text = text.strip()
             
-            logger.info(f"Fetched {len(text)} characters from {url}")
+            log_json("INFO", "Fetched URL", url=url, text_length=len(text))
             return text
             
     except httpx.HTTPError as e:
-        logger.error(f"HTTP error fetching {url}: {e}")
+        log_json("ERROR", "HTTP error fetching URL", url=url, error=str(e))
         raise HTTPException(status_code=400, detail=f"Failed to fetch URL: {str(e)}")
     except Exception as e:
-        logger.error(f"Error fetching {url}: {e}")
+        log_json("ERROR", "Error fetching URL", url=url, error=str(e))
         raise HTTPException(status_code=500, detail=f"Error processing URL: {str(e)}")
 
 
@@ -138,14 +115,14 @@ async def fetch_pdf(pdf_url: str) -> str:
             text = re.sub(r'\s+', ' ', text)
             text = text.strip()
             
-            logger.info(f"Extracted {len(text)} characters from PDF {pdf_url}")
+            log_json("INFO", "Extracted PDF", url=pdf_url, text_length=len(text))
             return text
             
     except httpx.HTTPError as e:
-        logger.error(f"HTTP error fetching PDF {pdf_url}: {e}")
+        log_json("ERROR", "HTTP error fetching PDF", url=pdf_url, error=str(e))
         raise HTTPException(status_code=400, detail=f"Failed to fetch PDF: {str(e)}")
     except Exception as e:
-        logger.error(f"Error processing PDF {pdf_url}: {e}")
+        log_json("ERROR", "Error processing PDF", url=pdf_url, error=str(e))
         raise HTTPException(status_code=500, detail=f"Error processing PDF: {str(e)}")
 
 
@@ -155,47 +132,46 @@ async def healthz():
     return {"ok": True}
 
 
-@app.post("/ingest", response_model=IngestResponse)
+@app.post("/ingest")
 async def ingest(request: IngestRequest):
-    """Ingest content from URLs or PDFs"""
+    """Ingest content from URLs, PDFs, or text"""
     doc_ids = []
     total_chars = 0
     
     try:
-        for source in request.sources:
+        for idx, source in enumerate(request.sources):
             if source.type == "url":
                 text = await fetch_url(source.value)
             elif source.type == "pdf":
                 text = await fetch_pdf(source.value)
+            elif source.type == "text":
+                text = source.value
             else:
                 raise HTTPException(status_code=400, detail=f"Unknown source type: {source.type}")
             
-            # Chunk the text
-            chunks = chunk_text(text, chunk_size=2000)
-            
-            # Create doc_ids for each chunk
-            for chunk in chunks:
-                doc_id = str(uuid4())
-                doc_ids.append(doc_id)
-                total_chars += len(chunk)
+            # Create fake doc IDs
+            doc_id = f"doc{idx + 1}"
+            doc_ids.append(doc_id)
+            total_chars += len(text)
         
         # Approximate tokens (rough estimate: 1 token ≈ 4 characters)
         tokens = total_chars // 4
         
-        logger.info(f"Ingested {len(doc_ids)} documents, {tokens} tokens")
+        log_json("INFO", "Ingestion complete", doc_count=len(doc_ids), tokens=tokens)
         
-        return IngestResponse(
-            doc_ids=doc_ids,
-            tokens=tokens
-        )
+        return {
+            "doc_ids": doc_ids,
+            "tokens": tokens
+        }
         
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error ingesting content: {e}")
+        log_json("ERROR", "Error ingesting content", error=str(e))
         raise HTTPException(status_code=500, detail=f"Error ingesting content: {str(e)}")
 
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8081)
+    port = int(os.getenv("PORT", "8081"))
+    uvicorn.run(app, host="0.0.0.0", port=port)

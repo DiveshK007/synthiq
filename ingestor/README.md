@@ -1,24 +1,33 @@
 # Ingestor Service
 
-Fetches and cleans raw content from URLs or text input.
+Fetches and cleans raw content from URLs, PDFs, or text.
 
 ## Setup
 
 ```bash
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
 ## Run
 
 ```bash
-uvicorn main:app --reload --port 8001
+export FRONTEND_ORIGIN=http://localhost:5174
+export PORT=8081  # Optional, defaults to 8081
+
+python -m uvicorn main:app --host 0.0.0.0 --port 8081
+```
+
+Or:
+
+```bash
+python main.py
 ```
 
 ## API
 
-- `POST /ingest` - Ingest content from URL or text
+- `GET /healthz` - Health check
+- `POST /ingest` - Ingest content from URLs, PDFs, or text
 
-See http://localhost:8001/docs for OpenAPI documentation.
-
+See http://localhost:8081/docs for OpenAPI documentation.
