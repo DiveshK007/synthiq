@@ -109,3 +109,30 @@ pytest orchestrator/tests/test_e2e.py -v
 - E2E test that spins up downstream services and tests full job flow
 - Validation tests for request/response models
 
+## Roadmap
+
+### Short-term (Current Sprint)
+- ✅ Production-grade API contracts with Pydantic validation
+- ✅ Rate limiting and request size guards
+- ✅ E2E testing infrastructure
+- ✅ Safety rails (URL validation, script stripping)
+
+### Medium-term
+- [ ] Agentic extraction (LLM-guided chunk ranking via Vertex AI)
+- [ ] Cloud Run deployment (once billing is configured)
+- [ ] Pub/Sub pipeline for long-running jobs
+- [ ] Firestore for job persistence
+- [ ] Docker + Dev Containers for one-command local up
+- [ ] Basic clustering + extractive summaries (deterministic with TF-IDF + KMeans)
+- [ ] Architecture documentation with Mermaid diagrams
+
+### Long-term
+- [ ] Authentication with Supabase Auth
+- [ ] Monitoring and observability (Prometheus, Sentry)
+- [ ] Comprehensive test coverage (80%+)
+- [ ] Performance optimization and caching
+- [ ] Multi-tenant support
+- [ ] Advanced visualization options (interactive graphs, export formats)
+
+See [docs/ENHANCEMENTS.md](docs/ENHANCEMENTS.md) for detailed enhancement plans.
+
