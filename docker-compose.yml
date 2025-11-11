@@ -1,0 +1,119 @@
+version: '3.8'
+
+services:
+  orchestrator:
+    build:
+      context: ./orchestrator
+      dockerfile: Dockerfile
+    container_name: synthiq-orchestrator
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - VERSION=${VERSION:-0.1.0}
+      - FRONTEND_ORIGIN=http://localhost:5174
+      - INGESTOR_URL=http://ingestor:8081
+      - SUMMARIZE_URL=http://summarize:8082
+      - VIZ_URL=http://viz:8083
+    depends_on:
+      ingestor:
+        condition: service_healthy
+      summarize:
+        condition: service_healthy
+      viz:
+        condition: service_healthy
+    networks:
+      - synthiq_net
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8080/healthz', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  ingestor:
+    build:
+      context: ./ingestor
+      dockerfile: Dockerfile
+    container_name: synthiq-ingestor
+    ports:
+      - "8081:8081"
+    environment:
+      - PORT=8081
+      - VERSION=${VERSION:-0.1.0}
+      - FRONTEND_ORIGIN=http://localhost:5174
+    networks:
+      - synthiq_net
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8081/healthz', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  summarize:
+    build:
+      context: ./summarize
+      dockerfile: Dockerfile
+    container_name: synthiq-summarize
+    ports:
+      - "8082:8082"
+    environment:
+      - PORT=8082
+      - VERSION=${VERSION:-0.1.0}
+      - FRONTEND_ORIGIN=http://localhost:5174
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4-turbo-preview}
+    networks:
+      - synthiq_net
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8082/healthz', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  viz:
+    build:
+      context: ./viz
+      dockerfile: Dockerfile
+    container_name: synthiq-viz
+    ports:
+      - "8083:8083"
+    environment:
+      - PORT=8083
+      - VERSION=${VERSION:-0.1.0}
+      - FRONTEND_ORIGIN=http://localhost:5174
+    networks:
+      - synthiq_net
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8083/healthz', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: synthiq-frontend
+    ports:
+      - "5174:80"
+    environment:
+      - VITE_API_BASE=http://localhost:8080
+    depends_on:
+      - orchestrator
+    networks:
+      - synthiq_net
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+networks:
+  synthiq_net:
+    driver: bridge
+

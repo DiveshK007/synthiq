@@ -1,0 +1,34 @@
+sequenceDiagram
+    participant User
+    participant Frontend
+    participant Orchestrator
+    participant Ingestor
+    participant Summarize
+    participant Viz
+    participant Database
+
+    User->>Frontend: Submit job (sources + goal)
+    Frontend->>Orchestrator: POST /jobs
+    Orchestrator->>Database: Create job record
+    Orchestrator-->>Frontend: Return job_id
+    
+    par Pipeline Execution
+        Orchestrator->>Ingestor: POST /ingest (sources)
+        Ingestor->>Ingestor: Fetch URLs/PDFs
+        Ingestor->>Ingestor: Extract & chunk text
+        Ingestor-->>Orchestrator: doc_ids, chunks, tokens
+        
+        Orchestrator->>Summarize: POST /summarize (doc_ids, chunks, goal)
+        Summarize->>Summarize: TF-IDF + KMeans clustering
+        Summarize->>Summarize: Extractive summarization
+        Summarize-->>Orchestrator: clusters, tldr, faqs
+        
+        Orchestrator->>Viz: POST /viz (clusters, tldr)
+        Viz->>Viz: Generate Mermaid graph
+        Viz-->>Orchestrator: mermaid, graph_png_url, slides_pdf_url
+    end
+    
+    Orchestrator->>Database: Update job (status=done, result)
+    Orchestrator->>Frontend: WebSocket update
+    Frontend->>User: Display results
+

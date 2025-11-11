@@ -1,0 +1,63 @@
+{
+  "name": "SynthIQ Development",
+  "image": "mcr.microsoft.com/devcontainers/python:3.11",
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "20"
+    },
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {
+      "version": "latest"
+    }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "ms-azuretools.vscode-docker"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "/usr/local/bin/python",
+        "python.linting.enabled": true,
+        "python.linting.pylintEnabled": false,
+        "python.linting.ruffEnabled": true,
+        "python.formatting.provider": "black",
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+          "source.organizeImports": true
+        }
+      }
+    }
+  },
+  "forwardPorts": [8080, 8081, 8082, 8083, 5174],
+  "portsAttributes": {
+    "8080": {
+      "label": "Orchestrator",
+      "onAutoForward": "notify"
+    },
+    "8081": {
+      "label": "Ingestor",
+      "onAutoForward": "silent"
+    },
+    "8082": {
+      "label": "Summarize",
+      "onAutoForward": "silent"
+    },
+    "8083": {
+      "label": "Viz",
+      "onAutoForward": "silent"
+    },
+    "5174": {
+      "label": "Frontend",
+      "onAutoForward": "notify"
+    }
+  },
+  "postCreateCommand": "pip install -r dev-requirements.txt && cd frontend && npm install",
+  "remoteUser": "vscode",
+  "mounts": [
+    "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached"
+  ]
+}
+

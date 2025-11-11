@@ -12,7 +12,15 @@ from fastapi.responses import ORJSONResponse
 from pydantic import ValidationError
 from openai import OpenAI
 from tenacity import retry, stop_after_attempt, wait_exponential
-from schemas import SummarizeRequest, SummarizeResponse, Cluster, FAQ, Citation, CitationSpan
+from schemas import SummarizeRequest, SummarizeResponse, Cluster, FAQ, Citation, CitationSpan, Chunk
+
+# Try to import clustering module
+try:
+    from clustering import generate_clusters
+    CLUSTERING_AVAILABLE = True
+except ImportError as e:
+    CLUSTERING_AVAILABLE = False
+    # Will log warning later when needed
 
 # Configure JSON logging
 logging.basicConfig(
@@ -141,10 +149,49 @@ async def summarize(request: SummarizeRequest):
     """Summarize and cluster documents"""
     try:
         doc_ids = request.doc_ids
+        chunks = request.chunks or []
         goal = request.goal
+        seed = request.seed
         
         if not doc_ids:
             raise HTTPException(status_code=400, detail="doc_ids cannot be empty")
+        
+        # If we have chunks and clustering is available, use deterministic clustering
+        if chunks and CLUSTERING_AVAILABLE:
+            try:
+            # Use TF-IDF + KMeans clustering with extractive summarization
+            clusters = generate_clusters(chunks, goal, n_clusters=None, seed=seed)
+            
+            # Build TL;DR from cluster summaries
+            tldr_sentences = [c.summary.split('.')[0] + '.' for c in clusters[:3] if c.summary]
+            tldr = " ".join(tldr_sentences)
+            if len(tldr) > 200:
+                tldr = tldr[:197] + "..."
+            
+            # Generate simple FAQs
+            faqs = [
+                FAQ(
+                    q=f"What are the main themes in research on {goal}?",
+                    a=f"The research reveals {len(clusters)} key themes: " + 
+                      ", ".join([c.label for c in clusters[:3]]) + "."
+                ),
+                FAQ(
+                    q="What sources were analyzed?",
+                    a=f"Analysis included {len(set(c.doc_id for cluster in clusters for c in cluster.citations))} documents."
+                )
+            ]
+            
+                log_json("INFO", "Summarization complete (TF-IDF+KMeans)", 
+                        cluster_count=len(clusters), chunk_count=len(chunks), seed=seed)
+                
+                return SummarizeResponse(
+                    clusters=clusters,
+                    tldr=tldr,
+                    faqs=faqs
+                )
+            except Exception as e:
+                log_json("WARN", "Clustering failed, using fallback", error=str(e))
+                # Fall through to placeholder implementation
         
         # Try OpenAI if configured, otherwise use placeholder
         if use_openai:

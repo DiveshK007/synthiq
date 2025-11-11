@@ -358,9 +358,10 @@ async def run_pipeline(job_id: str, payload: JobCreateRequest):
         db_update_job(job_id, progress={"ingest": 100, "summarize": 10, "viz": 0})
         await broadcast_job_update(job_id)
         
-        # Build summarize request
+        # Build summarize request (include chunks if available)
         summarize_request = SummarizeRequest(
             doc_ids=ingest_data.get("doc_ids", []),
+            chunks=ingest_data.get("chunks", []),  # Pass chunks for clustering
             goal=payload.goal
         )
         summarize_data = await call_service_with_retry(

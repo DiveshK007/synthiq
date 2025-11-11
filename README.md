@@ -2,6 +2,51 @@
 
 SynthIQ is a multi-agent research summarizer that ingests content from URLs and PDFs, extracts meaning through an orchestrator service, processes content via an ingestor service, clusters and summarizes insights with a summarize service, and visualizes results as knowledge graphs through a viz service, all coordinated by a Vite React frontend.
 
+## Local with Docker
+
+### Quick Start
+
+```bash
+# Build and start all services
+docker compose up --build
+
+# Services will be available at:
+# - Orchestrator: http://localhost:8080
+# - Ingestor: http://localhost:8081
+# - Summarize: http://localhost:8082
+# - Viz: http://localhost:8083
+# - Frontend: http://localhost:5174
+```
+
+### Health Checks
+
+```bash
+curl http://localhost:8080/healthz
+curl http://localhost:8081/healthz
+curl http://localhost:8082/healthz
+curl http://localhost:8083/healthz
+```
+
+### Stop Services
+
+```bash
+docker compose down
+```
+
+### Dev Containers (VS Code/Cursor)
+
+The repository includes a `.devcontainer/devcontainer.json` configuration for VS Code/Cursor Dev Containers. This provides:
+
+- Python 3.11 and Node 20 pre-installed
+- Docker-in-Docker support
+- Port forwarding for all services
+- Pre-configured extensions and settings
+
+To use:
+1. Open the repository in VS Code/Cursor
+2. When prompted, click "Reopen in Container"
+3. All dependencies will be installed automatically
+
 ## Local Dev (no Docker)
 
 ### Terminal A (orchestrator):

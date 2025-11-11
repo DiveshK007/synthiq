@@ -1,4 +1,4 @@
-.PHONY: help test lint fmt clean install dev
+.PHONY: help test lint fmt clean install dev devpost
 
 help:
 	@echo "SynthIQ Makefile"
@@ -10,6 +10,7 @@ help:
 	@echo "  make install    - Install all dependencies"
 	@echo "  make dev        - Start all services in dev mode"
 	@echo "  make clean      - Clean build artifacts"
+	@echo "  make devpost    - Generate Devpost assets"
 
 # Install dependencies
 install:
@@ -81,3 +82,21 @@ dev:
 	cd ../frontend && npm run dev & \
 	wait
 
+# Devpost assets
+devpost:
+	@echo "Generating Devpost assets..."
+	@mkdir -p docs/devpost/screenshots
+	@echo "✓ Created screenshots directory"
+	@echo ""
+	@echo "To generate Mermaid diagram:"
+	@echo "  1. Install @mermaid-js/mermaid-cli: npm install -g @mermaid-js/mermaid-cli"
+	@echo "  2. Run: mmdc -i docs/architecture.mmd -o docs/devpost/architecture.png"
+	@echo ""
+	@echo "To add screenshots:"
+	@echo "  Place PNG files in docs/devpost/screenshots/"
+	@echo "  Recommended: 3 screenshots showing:"
+	@echo "    - New Job form"
+	@echo "    - Job results with clusters"
+	@echo "    - Knowledge graph visualization"
+	@echo ""
+	@echo "Assets ready in docs/devpost/"

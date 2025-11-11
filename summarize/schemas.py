@@ -5,9 +5,19 @@ from typing import List, Optional
 from pydantic import BaseModel, Field
 
 
+class Chunk(BaseModel):
+    """Text chunk with metadata"""
+    chunk_id: int
+    text: str
+    doc_id: str
+    start: int
+    end: int
+
+
 class SummarizeRequest(BaseModel):
     """Request model for summarize service"""
     doc_ids: List[str] = Field(..., min_items=1, description="Document IDs to summarize")
+    chunks: Optional[List[Chunk]] = Field(None, description="Text chunks with provenance")
     goal: str = Field(..., min_length=1, max_length=1000, description="Summarization goal")
     seed: Optional[int] = Field(None, description="Random seed for deterministic clustering")
 
