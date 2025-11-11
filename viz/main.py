@@ -9,7 +9,8 @@ from typing import List
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import ORJSONResponse
-from pydantic import BaseModel
+from pydantic import ValidationError
+from schemas import VisualizeRequest, VisualizeResponse, Cluster
 
 # Configure JSON logging
 logging.basicConfig(
@@ -19,10 +20,13 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Get version from environment or use default
+VERSION = os.getenv("VERSION", "0.1.0")
+
 app = FastAPI(
     title="SynthIQ Viz",
     description="Generates Mermaid graphs and visualizations",
-    version="0.1.0",
+    version=VERSION,
     default_response_class=ORJSONResponse
 )
 
@@ -37,26 +41,7 @@ app.add_middleware(
 )
 
 
-class CitationSpan(BaseModel):
-    chunk_id: int
-    start: int
-    end: int
-
-
-class Citation(BaseModel):
-    doc_id: str
-    spans: List[CitationSpan]
-
-
-class Cluster(BaseModel):
-    label: str
-    summary: str
-    citations: List[Citation]
-
-
-class VisualizeRequest(BaseModel):
-    clusters: List[Cluster]
-    tldr: str
+# Schemas imported from schemas.py
 
 
 def log_json(level: str, message: str, **kwargs):
@@ -93,10 +78,16 @@ def generate_mermaid_graph(clusters: List[Cluster], tldr: str) -> str:
 @app.get("/healthz")
 async def healthz():
     """Health check endpoint"""
-    return {"ok": True}
+    return {"ok": True, "version": VERSION}
 
 
-@app.post("/viz")
+@app.get("/version")
+async def version():
+    """Version endpoint"""
+    return {"version": VERSION, "service": "viz"}
+
+
+@app.post("/viz", response_model=VisualizeResponse)
 async def visualize(request: VisualizeRequest):
     """Generate Mermaid graph from clusters"""
     try:
@@ -108,15 +99,23 @@ async def visualize(request: VisualizeRequest):
         
         log_json("INFO", "Visualization generated", cluster_count=len(clusters))
         
-        return {
-            "mermaid": mermaid,
-            "graph_png_url": "https://via.placeholder.com/800x400.png?text=Graph",
-            "slides_pdf_url": "https://example.com/slides.pdf"
-        }
+        return VisualizeResponse(
+            mermaid=mermaid,
+            graph_png_url="https://via.placeholder.com/800x400.png?text=Graph",
+            slides_pdf_url="https://example.com/slides.pdf"
+        )
         
+    except ValidationError as e:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Validation error: {str(e)}"
+        )
     except Exception as e:
         log_json("ERROR", "Error generating graph", error=str(e))
-        raise HTTPException(status_code=500, detail=f"Error generating graph: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error generating graph: {str(e)}"
+        )
 
 
 if __name__ == "__main__":

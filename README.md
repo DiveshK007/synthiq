@@ -72,14 +72,40 @@ curl -X POST http://localhost:8080/jobs \
 
 ## Testing
 
-### Dev Dependencies
-
-For testing, install pytest in the orchestrator service:
+### Quick Test Commands
 
 ```bash
+# Run all tests
+make test
+
+# Run linting
+make lint
+
+# Format code
+make fmt
+
+# Install all dependencies
+make install
+```
+
+### Manual Testing
+
+For testing individual services:
+
+```bash
+# Orchestrator tests
 cd orchestrator
 source .venv/bin/activate
-pip install pytest
-pytest test_orchestrator.py -v
+pip install pytest httpx
+pytest tests/ -v
+
+# E2E test (requires all services running)
+pytest orchestrator/tests/test_e2e.py -v
 ```
+
+### Test Coverage
+
+- Unit tests for each service (`/healthz`, `/version` endpoints)
+- E2E test that spins up downstream services and tests full job flow
+- Validation tests for request/response models
 

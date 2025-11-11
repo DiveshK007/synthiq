@@ -10,12 +10,17 @@ from typing import Dict, List, Optional
 from uuid import uuid4
 
 import httpx
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import ORJSONResponse
-from pydantic import BaseModel
+from pydantic import ValidationError
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 from database import init_db, create_job as db_create_job, get_job as db_get_job, update_job as db_update_job, list_jobs as db_list_jobs
+from schemas import (
+    JobCreateRequest, JobStatusResponse, HealthResponse, VersionResponse,
+    Source, IngestRequest, SummarizeRequest, VisualizeRequest
+)
+from middleware import RateLimitMiddleware, RequestSizeMiddleware
 
 # Configure JSON logging
 logging.basicConfig(
@@ -25,10 +30,13 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Get version from environment or use default
+VERSION = os.getenv("VERSION", "0.1.0")
+
 app = FastAPI(
     title="SynthIQ Orchestrator",
     description="Coordinates the research summarization pipeline",
-    version="0.1.0",
+    version=VERSION,
     default_response_class=ORJSONResponse
 )
 
@@ -48,6 +56,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Rate limiting and request size middleware
+app.add_middleware(RateLimitMiddleware, requests_per_minute=10)
+app.add_middleware(RequestSizeMiddleware, max_size=2 * 1024 * 1024)  # 2MB
+
 # Service URLs from environment
 INGESTOR_URL = os.getenv("INGESTOR_URL", "http://localhost:8081")
 SUMMARIZE_URL = os.getenv("SUMMARIZE_URL", "http://localhost:8082")
@@ -55,61 +67,6 @@ VIZ_URL = os.getenv("VIZ_URL", "http://localhost:8083")
 
 # WebSocket connections for real-time updates
 active_connections: Dict[str, List[WebSocket]] = {}
-
-
-class Source(BaseModel):
-    type: str  # "url" | "pdf" | "text"
-    value: str
-
-
-class NewJobPayload(BaseModel):
-    sources: List[Source]
-    goal: str
-
-
-class JobProgress(BaseModel):
-    ingest: int
-    summarize: int
-    viz: int
-
-
-class CitationSpan(BaseModel):
-    chunk_id: int
-    start: int
-    end: int
-
-
-class Citation(BaseModel):
-    doc_id: str
-    spans: List[CitationSpan]
-
-
-class Cluster(BaseModel):
-    label: str
-    summary: str
-    citations: List[Citation]
-
-
-class FAQ(BaseModel):
-    q: str
-    a: str
-
-
-class JobResult(BaseModel):
-    tldr: str
-    clusters: List[dict]
-    faqs: List[dict]
-    assets: dict
-    created_at: int
-    duration_ms: int
-
-
-class Job(BaseModel):
-    id: str
-    status: str  # "queued" | "running" | "done" | "error"
-    error: Optional[str] = None
-    progress: JobProgress
-    result: Optional[JobResult] = None
 
 
 def log_json(level: str, message: str, **kwargs):
@@ -144,10 +101,9 @@ async def call_service_with_retry(url: str, payload: dict, job_id: str, step: st
         raise
 
 
-@app.get("/healthz")
+@app.get("/healthz", response_model=HealthResponse)
 async def healthz():
     """Health check endpoint with detailed status"""
-    import time
     from datetime import datetime
     
     uptime_start = getattr(healthz, 'start_time', None)
@@ -180,35 +136,62 @@ async def healthz():
     except:
         dependencies["viz"] = False
     
-    return {
-        "ok": True,
-        "version": "0.1.0",
-        "uptime_seconds": uptime_seconds,
-        "dependencies": dependencies,
-        "timestamp": datetime.utcnow().isoformat()
-    }
-
-
-@app.post("/jobs")
-async def create_job(payload: NewJobPayload):
-    """Create a new research job"""
-    job_id = str(uuid4())
-    user_id = None  # TODO: Get from auth token
-    
-    # Create job in database
-    job = db_create_job(
-        job_id=job_id,
-        sources=[{"type": s.type, "value": s.value} for s in payload.sources],
-        goal=payload.goal,
-        user_id=user_id
+    return HealthResponse(
+        ok=True,
+        version=VERSION,
+        uptime_seconds=uptime_seconds,
+        dependencies=dependencies,
+        timestamp=datetime.utcnow().isoformat()
     )
-    
-    log_json("INFO", "Job created", job_id=job_id, route="POST /jobs")
-    
-    # Start pipeline asynchronously
-    asyncio.create_task(run_pipeline(job_id, payload))
-    
-    return {"job_id": job_id}
+
+
+@app.get("/version", response_model=VersionResponse)
+async def version():
+    """Version endpoint"""
+    return VersionResponse(version=VERSION, service="orchestrator")
+
+
+@app.post("/jobs", response_model=dict)
+async def create_job(payload: JobCreateRequest):
+    """Create a new research job"""
+    try:
+        # Validate payload (already validated by Pydantic, but double-check)
+        if len(payload.sources) > 20:
+            raise HTTPException(
+                status_code=400,
+                detail="Maximum 20 sources allowed per job"
+            )
+        
+        # Estimate payload size
+        total_size = sum(len(s.value) for s in payload.sources) + len(payload.sources) * 100
+        if total_size > 2 * 1024 * 1024:  # 2MB
+            raise HTTPException(
+                status_code=413,
+                detail="Total payload size exceeds 2MB limit"
+            )
+        
+        job_id = str(uuid4())
+        user_id = None  # TODO: Get from auth token
+        
+        # Create job in database
+        job = db_create_job(
+            job_id=job_id,
+            sources=[{"type": s.type, "value": s.value} for s in payload.sources],
+            goal=payload.goal,
+            user_id=user_id
+        )
+        
+        log_json("INFO", "Job created", job_id=job_id, route="POST /jobs")
+        
+        # Start pipeline asynchronously
+        asyncio.create_task(run_pipeline(job_id, payload))
+        
+        return {"job_id": job_id}
+    except ValidationError as e:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Validation error: {str(e)}"
+        )
 
 
 @app.get("/jobs")
@@ -230,24 +213,30 @@ async def list_jobs(user_id: Optional[str] = None, limit: int = 100, offset: int
     ]
 
 
-@app.get("/jobs/{job_id}")
+@app.get("/jobs/{job_id}", response_model=JobStatusResponse)
 async def get_job(job_id: str):
     """Get job status and results"""
     job = db_get_job(job_id)
     if not job:
         log_json("WARN", "Job not found", job_id=job_id, route="GET /jobs/{job_id}")
-        raise HTTPException(status_code=404, detail="Job not found")
+        raise HTTPException(
+            status_code=404,
+            detail=f"Job {job_id} not found"
+        )
     
     log_json("INFO", "Job retrieved", job_id=job_id, route="GET /jobs/{job_id}")
-    # Convert SQLModel to dict
-    return {
-        "id": job.id,
-        "status": job.status,
-        "error": job.error,
-        "progress": job.progress,
-        "result": job.result,
-        "created_at": job.created_at
-    }
+    
+    # Convert SQLModel to response model
+    from datetime import datetime
+    return JobStatusResponse(
+        job_id=job.id,
+        status=job.status,
+        progress=job.progress or {},
+        result=job.result,
+        error=job.error,
+        created_at=job.created_at,
+        updated_at=job.updated_at
+    )
 
 
 @app.websocket("/ws/jobs/{job_id}")
@@ -339,7 +328,7 @@ async def broadcast_job_update(job_id: str):
         del active_connections[job_id]
 
 
-async def run_pipeline(job_id: str, payload: NewJobPayload):
+async def run_pipeline(job_id: str, payload: JobCreateRequest):
     """Run the pipeline: ingest -> summarize -> viz"""
     start_time = time.time()
     
@@ -351,9 +340,11 @@ async def run_pipeline(job_id: str, payload: NewJobPayload):
         log_json("INFO", "Ingesting content", job_id=job_id, route="run_pipeline")
         db_update_job(job_id, progress={"ingest": 10, "summarize": 0, "viz": 0})
         
+        # Build ingest request
+        ingest_request = IngestRequest(sources=payload.sources)
         ingest_data = await call_service_with_retry(
             f"{INGESTOR_URL}/ingest",
-            {"sources": [{"type": s.type, "value": s.value} for s in payload.sources]},
+            ingest_request.model_dump(),
             job_id,
             "ingest"
         )
@@ -367,9 +358,14 @@ async def run_pipeline(job_id: str, payload: NewJobPayload):
         db_update_job(job_id, progress={"ingest": 100, "summarize": 10, "viz": 0})
         await broadcast_job_update(job_id)
         
+        # Build summarize request
+        summarize_request = SummarizeRequest(
+            doc_ids=ingest_data.get("doc_ids", []),
+            goal=payload.goal
+        )
         summarize_data = await call_service_with_retry(
             f"{SUMMARIZE_URL}/summarize",
-            {"doc_ids": ingest_data.get("doc_ids", []), "goal": payload.goal},
+            summarize_request.model_dump(),
             job_id,
             "summarize"
         )
@@ -383,12 +379,18 @@ async def run_pipeline(job_id: str, payload: NewJobPayload):
         db_update_job(job_id, progress={"ingest": 100, "summarize": 100, "viz": 10})
         await broadcast_job_update(job_id)
         
+        # Build visualize request
+        from schemas import Cluster, VisualizeRequest
+        clusters = [
+            Cluster(**c) for c in summarize_data.get("clusters", [])
+        ]
+        viz_request = VisualizeRequest(
+            clusters=clusters,
+            tldr=summarize_data.get("tldr", "")
+        )
         viz_data = await call_service_with_retry(
             f"{VIZ_URL}/viz",
-            {
-                "clusters": summarize_data.get("clusters", []),
-                "tldr": summarize_data.get("tldr", "")
-            },
+            viz_request.model_dump(),
             job_id,
             "viz"
         )
