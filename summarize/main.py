@@ -159,28 +159,28 @@ async def summarize(request: SummarizeRequest):
         # If we have chunks and clustering is available, use deterministic clustering
         if chunks and CLUSTERING_AVAILABLE:
             try:
-            # Use TF-IDF + KMeans clustering with extractive summarization
-            clusters = generate_clusters(chunks, goal, n_clusters=None, seed=seed)
-            
-            # Build TL;DR from cluster summaries
-            tldr_sentences = [c.summary.split('.')[0] + '.' for c in clusters[:3] if c.summary]
-            tldr = " ".join(tldr_sentences)
-            if len(tldr) > 200:
-                tldr = tldr[:197] + "..."
-            
-            # Generate simple FAQs
-            faqs = [
-                FAQ(
-                    q=f"What are the main themes in research on {goal}?",
-                    a=f"The research reveals {len(clusters)} key themes: " + 
-                      ", ".join([c.label for c in clusters[:3]]) + "."
-                ),
-                FAQ(
-                    q="What sources were analyzed?",
-                    a=f"Analysis included {len(set(c.doc_id for cluster in clusters for c in cluster.citations))} documents."
-                )
-            ]
-            
+                # Use TF-IDF + KMeans clustering with extractive summarization
+                clusters = generate_clusters(chunks, goal, n_clusters=None, seed=seed)
+                
+                # Build TL;DR from cluster summaries
+                tldr_sentences = [c.summary.split('.')[0] + '.' for c in clusters[:3] if c.summary]
+                tldr = " ".join(tldr_sentences)
+                if len(tldr) > 200:
+                    tldr = tldr[:197] + "..."
+                
+                # Generate simple FAQs
+                faqs = [
+                    FAQ(
+                        q=f"What are the main themes in research on {goal}?",
+                        a=f"The research reveals {len(clusters)} key themes: " + 
+                          ", ".join([c.label for c in clusters[:3]]) + "."
+                    ),
+                    FAQ(
+                        q="What sources were analyzed?",
+                        a=f"Analysis included {len(set(c.doc_id for cluster in clusters for c in cluster.citations))} documents."
+                    )
+                ]
+                
                 log_json("INFO", "Summarization complete (TF-IDF+KMeans)", 
                         cluster_count=len(clusters), chunk_count=len(chunks), seed=seed)
                 
