@@ -27,8 +27,10 @@ jobs:
           ruff format --check ${{ matrix.service }} || true
           pyright ${{ matrix.service }} || true
       
-      - name: Unit tests (if any)
-        run: pytest -q || echo "no tests yet"
+      - name: Unit tests
+        run: |
+          cd ${{ matrix.service }}
+          pytest tests/ -v || echo "no tests yet"
 
   frontend:
     runs-on: ubuntu-latest

@@ -48,6 +48,8 @@ dist-ssr/
 .env.local
 .env.*
 .env*
+# But allow .env.example
+!.env.example
 
 # Logs
 *.log
